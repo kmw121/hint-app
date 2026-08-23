@@ -43,3 +43,6 @@ app-example
 
 /android
 /ios
+
+# Local APK build outputs
+/builds/
