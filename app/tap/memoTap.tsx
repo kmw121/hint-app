@@ -12,8 +12,8 @@ import { useMemoStore } from "../../stores/memoStore";
 import { useThemeStore } from "../../stores/themeStore";
 
 /** 아이콘 (현재 파일 위치 기준: app/tap/..., 루트의 asset/ 폴더) */
-import eraserIcon from "../../assets/images/origin/eraser.png";
-import resetIcon from "../../assets/images/origin/reset.png";
+import eraserIcon from "../../assets/images/flight/eraser.png";
+import resetIcon from "../../assets/images/flight/reset.png";
 
 export default function MemoTapScreen() {
   const { flashlightEnabled } = useThemeStore();
