@@ -15,6 +15,10 @@ const sourceApk = path.join(
   "app-release.apk"
 );
 const outputRoot = path.join(projectRoot, "builds", "android");
+const controlDataRoot = path.resolve(projectRoot, "..", "control", "data");
+const controlThemesPath = path.join(controlDataRoot, "themes.json");
+const controlProgressPath = path.join(controlDataRoot, "progress.json");
+const defaultProgressSteps = Array.from({ length: 21 }, (_, index) => index * 5);
 
 const themeCodes = process.argv
   .slice(2)
@@ -55,6 +59,64 @@ function run(command, args, options = {}) {
   if (result.status !== 0) {
     throw new Error(`${command} 실행 실패 (종료 코드 ${result.status})`);
   }
+}
+
+function readJsonArray(filePath) {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Control JSON 파일을 찾을 수 없습니다: ${filePath}`);
+  }
+
+  const value = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  if (!Array.isArray(value)) {
+    throw new Error(`Control JSON 최상위 값이 배열이 아닙니다: ${filePath}`);
+  }
+  return value;
+}
+
+function writeJson(filePath, value) {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function syncControlData(themeCodes) {
+  const themes = readJsonArray(controlThemesPath);
+  const progress = readJsonArray(controlProgressPath);
+  let themesChanged = false;
+  let progressChanged = false;
+
+  for (const themeCode of themeCodes) {
+    if (!themes.some((theme) => theme.themeCode === themeCode)) {
+      themes.push({
+        themeCode,
+        themeTitle: `${themeCode} Hint`,
+        durationMinutes: 60,
+        durationSeconds: 0,
+        progress: defaultProgressSteps,
+        lightOffTime: 0,
+      });
+      themesChanged = true;
+    }
+
+    if (!progress.some((item) => item.themeCode === themeCode)) {
+      progress.push({
+        themeCode,
+        endTime: 0,
+        progressIndex: 0,
+        hintCount: 0,
+        isRunning: 0,
+        chatData: [],
+        newChat: false,
+      });
+      progressChanged = true;
+    }
+  }
+
+  if (themesChanged) writeJson(controlThemesPath, themes);
+  if (progressChanged) writeJson(controlProgressPath, progress);
+
+  console.log(
+    `Control JSON 동기화: 테마 ${themesChanged ? "추가됨" : "변경 없음"}, ` +
+      `진행 상태 ${progressChanged ? "추가됨" : "변경 없음"}`
+  );
 }
 
 function main() {
@@ -106,6 +168,7 @@ function main() {
 
     const destination = path.join(outputRoot, `${themeCode}.apk`);
     fs.copyFileSync(sourceApk, destination);
+    syncControlData([themeCode]);
     results.push({ themeCode, apk: destination });
     console.log(`완료: ${destination}`);
   }
