@@ -108,7 +108,7 @@ export default function TabBar({
         ? {
             backgroundColor: newChatAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: ["#FFFFFF", "#FFDD00"],
+              outputRange: ["#2B2B2B", "#FFDD00"],
             }),
           }
         : {};
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     paddingBottom: TAB_BAR_EDGE_GAP,
     paddingHorizontal: TAB_BAR_SIDE_GAP,
     paddingTop: 35, // 👉 위아래 여백 줄임
-    backgroundColor: "#264d84",
+    backgroundColor: "#2B2B2B",
     position: "absolute",
   },
   tabTouchable: {
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   tabButtonInactive: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#2B2B2B",
   },
   icon: {
     width: 60,

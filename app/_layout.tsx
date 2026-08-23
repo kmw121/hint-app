@@ -234,7 +234,7 @@ export default function Layout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#264d84",
+    backgroundColor: "#2B2B2B",
   },
   headerText: {
     color: "#fff",
