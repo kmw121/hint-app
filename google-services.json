@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "811190994606",
+    "project_id": "kmsy120-4a663",
+    "storage_bucket": "kmsy120-4a663.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:811190994606:android:48938e6dc8a55d1c0e4f3f",
+        "android_client_info": {
+          "package_name": "com.kmsy120"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwFjVd3pxz4e6vPXI4LaQueaprBn-3mSY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

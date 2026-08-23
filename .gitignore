@@ -33,7 +33,13 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Firebase Admin service account (private key)
+fcm_acount.json
+
 # typescript
 *.tsbuildinfo
 
 app-example
+
+/android
+/ios
