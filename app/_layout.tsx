@@ -34,7 +34,7 @@ import {
 import PretendardBlack from "../assets/fonts/Pretendard-Black.ttf";
 import PretendardBold from "../assets/fonts/Pretendard-Bold.ttf";
 import PretendardRegular from "../assets/fonts/Pretendard-Regular.ttf";
-import backgroundImage from "../assets/images/background.png";
+import backgroundImage from "../assets/images/origin/background.png";
 
 // 전역 패밀리 이름 (등록 키와 동일해야 함)
 const FONT = {

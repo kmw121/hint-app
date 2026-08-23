@@ -10,19 +10,19 @@ import {
   View,
 } from "react-native";
 
-/* 아이콘 PNG (경로: ../assets/images/taps/) */
-import chatTap from "../assets/images/taps/chatTap.png";
-import chatTapActive from "../assets/images/taps/chatTapActive.png";
-import flashTap from "../assets/images/taps/flashTap.png";
-import flashTapActive from "../assets/images/taps/flashTapActive.png";
-import hintTap from "../assets/images/taps/hintTap.png";
-import hintTapActive from "../assets/images/taps/hintTapActive.png";
-import indexIcon from "../assets/images/taps/index.png";
-import indexActive from "../assets/images/taps/indexActive.png";
-import memoTap from "../assets/images/taps/memoTap.png";
-import memoTapActive from "../assets/images/taps/memoTapActive.png";
-import settingTap from "../assets/images/taps/settingTap.png";
-import settingTapActive from "../assets/images/taps/settingTapActive.png";
+/* 아이콘 PNG (경로: ../assets/images/origin/taps/) */
+import chatTap from "../assets/images/origin/taps/chatTap.png";
+import chatTapActive from "../assets/images/origin/taps/chatTapActive.png";
+import flashTap from "../assets/images/origin/taps/flashTap.png";
+import flashTapActive from "../assets/images/origin/taps/flashTapActive.png";
+import hintTap from "../assets/images/origin/taps/hintTap.png";
+import hintTapActive from "../assets/images/origin/taps/hintTapActive.png";
+import indexIcon from "../assets/images/origin/taps/index.png";
+import indexActive from "../assets/images/origin/taps/indexActive.png";
+import memoTap from "../assets/images/origin/taps/memoTap.png";
+import memoTapActive from "../assets/images/origin/taps/memoTapActive.png";
+import settingTap from "../assets/images/origin/taps/settingTap.png";
+import settingTapActive from "../assets/images/origin/taps/settingTapActive.png";
 
 const TabRoutes = {
   Main: "/",
