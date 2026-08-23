@@ -104,7 +104,7 @@ function main() {
       throw new Error(`APK를 찾을 수 없습니다: ${sourceApk}`);
     }
 
-    const destination = path.join(outputRoot, `hint-${themeCode}-release.apk`);
+    const destination = path.join(outputRoot, `${themeCode}.apk`);
     fs.copyFileSync(sourceApk, destination);
     results.push({ themeCode, apk: destination });
     console.log(`완료: ${destination}`);
