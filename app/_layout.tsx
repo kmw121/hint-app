@@ -65,7 +65,7 @@ function ForcedLightOffOverlay() {
 
 function LayoutInner() {
   const { loadTheme, themeCode, isHorizontal } = useThemeStore();
-  const { loadHints, hintCount, loadAppState } = useHintStore();
+  const { loadHints, hintCount, usedHintCodes, loadAppState, stateLoaded } = useHintStore();
 
   useSocketConnection();
 
@@ -140,15 +140,20 @@ function LayoutInner() {
   }, [kickImmersive]);
 
   useEffect(() => {
+    if (!stateLoaded) return;
     const socket = getSocket();
     if (socket && socket.connected) {
-      socket.emit("toControl", {
+      socket.emit("stateAction", {
         themeCode,
-        status: "usedHint",
-        data: hintCount,
+        requestId: `hint-count:${themeCode}:${hintCount}:${usedHintCodes.join(",")}`,
+        action: {
+          type: "useHint",
+          hintCount,
+          code: usedHintCodes[usedHintCodes.length - 1],
+        },
       });
     }
-  }, [hintCount, themeCode]);
+  }, [hintCount, usedHintCodes, themeCode, stateLoaded]);
 
   return (
     <View style={styles.container}>

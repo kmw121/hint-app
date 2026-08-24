@@ -16,6 +16,8 @@ export interface Hint {
 }
 
 export interface ChatMessage {
+  id?: string;
+  generation?: string;
   type: "server" | "client" | "app";
   data: string;
   createdAt: string;
@@ -25,6 +27,14 @@ const HINT_FILE = FileSystem.documentDirectory + "hintData.json";
 const STATE_FILE = FileSystem.documentDirectory + "appState.json";
 
 interface HintState {
+  generation: string;
+  revision: number;
+  baseGeneration: string | null;
+  baseRevision: number;
+  localBranchId: string | null;
+  localResetAt: number | null;
+  startedAt: number | null;
+  stateLoaded: boolean;
   hints: Hint[];
   editHints: Hint[];
   duplicateHintIds: string[];
@@ -70,12 +80,22 @@ interface HintState {
 
   saveAppState: (attr?: string) => Promise<void>;
   loadAppState: () => Promise<void>;
-  resetHintState: () => void;
+  resetHintState: () => Promise<void>;
+  applyServerSnapshot: (snapshot: any) => Promise<void>;
+  getSyncSnapshot: () => Record<string, any>;
   clearEditHints: () => void;
   clearDuplicateHintIds: () => void;
 }
 
 export const useHintStore = create<HintState>((set, get) => ({
+  generation: "legacy",
+  revision: 0,
+  baseGeneration: null,
+  baseRevision: 0,
+  localBranchId: null,
+  localResetAt: null,
+  startedAt: null,
+  stateLoaded: false,
   hints: [],
   editHints: [],
   duplicateHintIds: [],
@@ -218,6 +238,7 @@ export const useHintStore = create<HintState>((set, get) => ({
   remainingTime: 0,
 
   startTimer: (durationSec, remainingTime) => {
+    let localStartedAt: number | null = null;
     if (remainingTime) {
       set({
         isRunning: true,
@@ -225,13 +246,35 @@ export const useHintStore = create<HintState>((set, get) => ({
         remainingTime: Math.max(0, Math.floor(remainingTime / 1000)),
       });
     } else if (durationSec) {
-      const end = Date.now() + durationSec * 1000;
-      set({ isRunning: true, endTime: end, remainingTime: durationSec });
+      localStartedAt = Date.now();
+      const end = localStartedAt + durationSec * 1000;
+      set({
+        isRunning: true,
+        startedAt: localStartedAt,
+        endTime: end,
+        remainingTime: durationSec,
+      });
     } else {
       return;
     }
 
     get().saveAppState();
+
+    if (durationSec && localStartedAt) {
+      const socket = getSocket();
+      const { themeCode } = useThemeStore.getState();
+      if (socket?.connected) {
+        socket.emit("stateAction", {
+          themeCode,
+          requestId: `start:${themeCode}:${localStartedAt}`,
+          action: {
+            type: "start",
+            durationMs: durationSec * 1000,
+            startedAt: localStartedAt,
+          },
+        });
+      }
+    }
 
     if (intervalRef) clearInterval(intervalRef);
     intervalRef = setInterval(() => {
@@ -317,16 +360,25 @@ export const useHintStore = create<HintState>((set, get) => ({
 
   chatData: [],
   setChatData: (messages, isClient) => {
-    set({ chatData: messages });
+    const generation = get().generation;
+    const normalized = messages.map((message) => ({
+      ...message,
+      id:
+        message.id ||
+        `${message.type}:${message.createdAt}:${message.data}`,
+      generation: message.generation || generation,
+    }));
+    set({ chatData: normalized });
     get().saveAppState();
 
     const socket = getSocket();
     const { themeCode } = useThemeStore.getState();
     if (socket && socket.connected && isClient) {
-      socket.emit("toControl", {
-        themeCode: themeCode,
-        status: "chat",
-        data: messages,
+      const message = normalized[normalized.length - 1];
+      socket.emit("stateAction", {
+        themeCode,
+        requestId: `chat:${message?.id || Date.now()}`,
+        action: { type: "appendChat", message },
       });
     }
   },
@@ -345,6 +397,13 @@ export const useHintStore = create<HintState>((set, get) => ({
       remainingTime,
       progress,
       chatData,
+      generation,
+      revision,
+      baseGeneration,
+      baseRevision,
+      localBranchId,
+      localResetAt,
+      startedAt,
     } = get();
     const data = {
       hintCount,
@@ -355,12 +414,22 @@ export const useHintStore = create<HintState>((set, get) => ({
       remainingTime,
       progress,
       chatData,
+      generation,
+      revision,
+      baseGeneration,
+      baseRevision,
+      localBranchId,
+      localResetAt,
+      startedAt,
     };
 
     try {
       await FileSystem.writeAsStringAsync(STATE_FILE, JSON.stringify(data));
       const info = await FileSystem.getInfoAsync(STATE_FILE);
-      if (!info.exists) return;
+      if (!info.exists) {
+        set({ stateLoaded: true });
+        return;
+      }
     } catch (err) {
       console.error("앱 상태 저장 실패!", err);
     }
@@ -369,7 +438,10 @@ export const useHintStore = create<HintState>((set, get) => ({
   loadAppState: async () => {
     try {
       const info = await FileSystem.getInfoAsync(STATE_FILE);
-      if (!info.exists) return;
+      if (!info.exists) {
+        set({ stateLoaded: true });
+        return;
+      }
 
       const { minutes, seconds } = useThemeStore.getState();
       const duration = minutes * 60 + seconds;
@@ -395,19 +467,31 @@ export const useHintStore = create<HintState>((set, get) => ({
         remainingTime: remaining,
         progress: data.progress ?? 0,
         chatData: data.chatData ?? [],
+        generation: data.generation ?? "legacy",
+        revision: data.revision ?? 0,
+        baseGeneration: data.baseGeneration ?? null,
+        baseRevision: data.baseRevision ?? 0,
+        localBranchId: data.localBranchId ?? null,
+        localResetAt: data.localResetAt ?? null,
+        startedAt: data.startedAt ?? null,
+        stateLoaded: true,
       });
 
       if (data.isRunning && remaining > 0) {
-        get().startTimer(remaining);
+        get().startTimer(0, remaining * 1000);
       }
     } catch (err) {
+      set({ stateLoaded: true });
       console.error("앱 상태 불러오기 실패!", err);
     }
   },
 
-  resetHintState: () => {
-    const { minutes, seconds } = useThemeStore.getState();
+  resetHintState: async () => {
+    const { minutes, seconds, themeCode } = useThemeStore.getState();
     const duration = minutes * 60 + seconds;
+    const current = get();
+    const localBranchId = current.localBranchId || `local:${Date.now()}:${Math.random()}`;
+    const localResetAt = current.localResetAt || Date.now();
     if (intervalRef) {
       clearInterval(intervalRef);
       intervalRef = null;
@@ -421,9 +505,83 @@ export const useHintStore = create<HintState>((set, get) => ({
       endTime: null,
       progress: 0,
       chatData: [],
+      generation: localBranchId,
+      baseGeneration: current.localBranchId ? current.baseGeneration : current.generation,
+      baseRevision: current.localBranchId ? current.baseRevision : current.revision,
+      localBranchId,
+      localResetAt,
+      startedAt: null,
     });
-    const { clearStrokes } = useMemoStore.getState();
-    clearStrokes();
-    get().saveAppState();
+    useMemoStore.getState().clearStrokes();
+    await get().saveAppState();
+
+    const socket = getSocket();
+    if (socket?.connected) {
+      socket.emit(
+        "stateAction",
+        {
+          themeCode,
+          requestId: `reset:${localBranchId}`,
+          action: { type: "reset", durationMs: duration * 1000 },
+        },
+        async (response: any) => {
+          if (response?.snapshot) await get().applyServerSnapshot(response.snapshot);
+        }
+      );
+    }
+  },
+
+  applyServerSnapshot: async (snapshot) => {
+    if (!snapshot) return;
+    const previousServerMessages = get().chatData.filter((m) => m.type === "server").length;
+    const chatData = (Array.isArray(snapshot.chatData) ? snapshot.chatData : []).map(
+      (message: ChatMessage) => ({ ...message, generation: snapshot.generation })
+    );
+    const isRunning = snapshot.isRunning === 1;
+    const remainingMs = isRunning
+      ? Math.max(0, Number(snapshot.endTime || 0) - Date.now())
+      : Number(snapshot.remainingTime || snapshot.endTime || 0);
+    if (intervalRef) clearInterval(intervalRef);
+    intervalRef = isRunning ? setInterval(() => get().tick(), 1000) : null;
+    set({
+      generation: snapshot.generation,
+      revision: Number(snapshot.revision || 0),
+      baseGeneration: null,
+      baseRevision: 0,
+      localBranchId: null,
+      localResetAt: null,
+      startedAt: snapshot.startedAt || null,
+      hintCount: Number(snapshot.hintCount || 0),
+      usedHintCodes: Array.isArray(snapshot.usedHintCodes) ? snapshot.usedHintCodes : [],
+      chatData,
+      progress: Number(snapshot.progress || 0),
+      isRunning,
+      endTime: isRunning ? Number(snapshot.endTime || 0) : null,
+      remainingTime: Math.max(0, Math.floor(remainingMs / 1000)),
+      newChat:
+        chatData.filter((m: ChatMessage) => m.type === "server").length >
+        previousServerMessages,
+    });
+    await get().saveAppState();
+  },
+
+  getSyncSnapshot: () => {
+    const state = get();
+    return {
+      generation: state.generation,
+      revision: state.revision,
+      baseGeneration: state.baseGeneration,
+      baseRevision: state.baseRevision,
+      localBranchId: state.localBranchId,
+      localResetAt: state.localResetAt,
+      isRunning: state.isRunning ? 1 : 0,
+      startedAt: state.startedAt,
+      endTime: state.endTime || 0,
+      remainingTime: state.remainingTime * 1000,
+      progress: state.progress,
+      hintCount: state.hintCount,
+      usedHintCodes: state.usedHintCodes,
+      chatData: state.chatData,
+    };
   },
 }));

@@ -28,6 +28,9 @@ export default function useSocketConnection() {
     getChatData,
     getHintCount,
     resetHintState,
+    getSyncSnapshot,
+    applyServerSnapshot,
+    stateLoaded,
     setForcedLightOff,
     setIsNewChat,
     getIsChatTap,
@@ -130,22 +133,27 @@ export default function useSocketConnection() {
   };
 
   const registerAndSync = useCallback((s: Socket) => {
-    s.emit("register", {
-      type: "app",
-      themeCode,
-      pushToken: pushToken || undefined,
-      platform: getPlatformSafe(),
-    });
-
-    const hintCount = getHintCount();
-    const chatData = getChatData();
-
-    s.emit("toControl", {
-      themeCode,
-      status: "requestSync",
-      data: { hintCount, chatData },
-    });
-  }, [themeCode, pushToken, getHintCount, getChatData]);
+    if (!stateLoaded) return;
+    s.emit(
+      "register",
+      {
+        type: "app",
+        themeCode,
+        pushToken: pushToken || undefined,
+        platform: getPlatformSafe(),
+      },
+      (registration: any) => {
+        if (registration?.status !== "registered") return;
+        s.emit(
+          "appSync",
+          { themeCode, ...getSyncSnapshot() },
+          async (response: any) => {
+            if (response?.snapshot) await applyServerSnapshot(response.snapshot);
+          }
+        );
+      }
+    );
+  }, [themeCode, pushToken, stateLoaded, getSyncSnapshot, applyServerSnapshot]);
 
   const attachHandlers = useCallback(
     (s: Socket) => {
@@ -154,6 +162,7 @@ export default function useSocketConnection() {
       s.off("disconnect");
       s.off("connect_error");
       s.off("command");
+      s.off("stateSnapshot");
 
       s.on("connect", () => {
         console.log("✅ 소켓 연결 성공:", s.id);
@@ -174,6 +183,15 @@ export default function useSocketConnection() {
           reconnectFailCount.current = 0;
           triggerRediscovery();
         }
+      });
+
+      s.on("stateSnapshot", async ({ snapshot }: { snapshot: any }) => {
+        await applyServerSnapshot(snapshot);
+        s.emit("snapshotAck", {
+          themeCode,
+          generation: snapshot?.generation,
+          revision: snapshot?.revision,
+        });
       });
 
       s.on("command", ({ command, data }: { command: string; data: any }) => {
@@ -265,6 +283,7 @@ export default function useSocketConnection() {
       setIsNewChat,
       getIsChatTap,
       getChatData,
+      applyServerSnapshot,
     ]
   );
 
@@ -280,6 +299,7 @@ export default function useSocketConnection() {
 
   // ✅ 서버 자동 탐색 (마운트 시 1회)
   useEffect(() => {
+    if (!stateLoaded) return;
     if (discoveryDone.current) return;
     discoveryDone.current = true;
 
@@ -290,11 +310,11 @@ export default function useSocketConnection() {
       else if (!cancelled) console.warn("서버 자동 탐색 실패");
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [stateLoaded]);
 
   // ✅ 서버 URL 확보 후 소켓 연결/핸들러 부착
   useEffect(() => {
-    if (!serverUrl) return;
+    if (!serverUrl || !stateLoaded) return;
 
     if (urlRef.current === serverUrl && socketRef.current) {
       attachHandlers(socketRef.current);
@@ -311,7 +331,7 @@ export default function useSocketConnection() {
     attachHandlers(s);
 
     if (!s.connected) s.connect();
-  }, [serverUrl, attachHandlers]);
+  }, [serverUrl, stateLoaded, attachHandlers]);
 
 
   // ✅ pushToken이 나중에 생겨도 "재등록"만 (새 소켓 생성 X)

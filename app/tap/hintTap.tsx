@@ -72,16 +72,8 @@ export default function HintTapScreen() {
     if (!trimmed) return;
 
     if (trimmed.toLowerCase() === resetCode.toLowerCase()) {
-      resetHintState();
+      await resetHintState();
       setInputValue("");
-      const socket = getSocket();
-      if (socket && socket.connected) {
-        socket.emit("toControl", {
-          themeCode: themeCode,
-          status: "reset",
-          data: {},
-        });
-      }
       return;
     }
 
