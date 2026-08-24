@@ -164,7 +164,8 @@ async function main() {
     return;
   }
 
-  const appName = expo.name ?? "HintApp";
+  const themeCode = process.env.HINT_THEME_CODE?.trim();
+  const appName = themeCode ? `${themeCode} Hint` : expo.name ?? "HintApp";
   const iconPath = resolveProjectPath(expo.icon);
   const adaptiveIcon = expo.android?.adaptiveIcon ?? {};
   const adaptiveForegroundPath =
