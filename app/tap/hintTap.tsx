@@ -1,4 +1,3 @@
-import { getSocket } from "@/utils/socketClient";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -34,7 +33,7 @@ export default function HintTapScreen() {
     setIsChatTap,
   } = useHintStore();
 
-  const { flashlightEnabled, resetCode, themeCode } = useThemeStore();
+  const { flashlightEnabled, resetCode } = useThemeStore();
 
   useEffect(() => {
     const showListener = Keyboard.addListener("keyboardDidShow", () =>
