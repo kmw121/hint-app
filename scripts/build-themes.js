@@ -127,7 +127,6 @@ function main() {
   }
 
   fs.mkdirSync(outputRoot, { recursive: true });
-  run(process.execPath, [path.join(projectRoot, "scripts", "sync-native-assets.js")]);
 
   const results = [];
 
@@ -141,6 +140,10 @@ function main() {
       NODE_ENV: "production",
       HINT_THEME_CODE: themeCode,
     };
+
+    run(process.execPath, [path.join(projectRoot, "scripts", "sync-native-assets.js")], {
+      env,
+    });
 
     // 테마 코드가 들어가는 Expo 설정과 JS 번들만 강제로 다시 만듭니다.
     // 네이티브 컴파일 결과는 재사용해 두 번째 빌드부터 시간을 줄입니다.
