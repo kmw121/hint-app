@@ -118,7 +118,7 @@ export default function TabBar({
         ? {
             backgroundColor: newChatAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: ["#FFFFFF", "#FFDD00"],
+              outputRange: ["#2B2B2B", "#FFDD00"],
             }),
           }
         : {};
