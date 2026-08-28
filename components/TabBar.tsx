@@ -114,11 +114,11 @@ export default function TabBar({
 
     // Chat 탭만 비활성 시 반짝이
     const animatedStyle =
-      key === "Chat" && !isActive
+      key === "Chat" && !isActive && newChat
         ? {
             backgroundColor: newChatAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: ["#FFF4A3", "#FFDD00"],
+              outputRange: ["#FFFFFF", "#FFDD00"],
             }),
           }
         : {};
