@@ -26,6 +26,9 @@ export interface ChatMessage {
 const HINT_FILE = FileSystem.documentDirectory + "hintData.json";
 const STATE_FILE = FileSystem.documentDirectory + "appState.json";
 
+const getChatMessageKey = (message: ChatMessage) =>
+  message.id || `${message.type}:${message.createdAt}:${message.data}`;
+
 interface HintState {
   generation: string;
   revision: number;
@@ -100,12 +103,24 @@ export const useHintStore = create<HintState>((set, get) => ({
   editHints: [],
   duplicateHintIds: [],
   isChatTap: false,
-  setIsChatTap: (value: boolean) => set({ isChatTap: value }),
+  setIsChatTap: (value: boolean) => {
+    const current = get();
+    if (current.isChatTap === value && (!value || !current.newChat)) return;
+    set((state) => ({
+      isChatTap: value,
+      newChat: value ? false : state.newChat,
+    }));
+    if (current.stateLoaded) void get().saveAppState("newChat");
+  },
   getIsChatTap: () => {
     return get().isChatTap;
   },
   newChat: false,
-  setIsNewChat: (value: boolean) => set({ newChat: value }),
+  setIsNewChat: (value: boolean) => {
+    if (get().newChat === value) return;
+    set({ newChat: value });
+    if (get().stateLoaded) void get().saveAppState("newChat");
+  },
 
   clearEditHints: () => set({ editHints: get().hints }),
   clearDuplicateHintIds: () => set({ duplicateHintIds: [] }),
@@ -404,6 +419,7 @@ export const useHintStore = create<HintState>((set, get) => ({
       localBranchId,
       localResetAt,
       startedAt,
+      newChat,
     } = get();
     const data = {
       hintCount,
@@ -421,6 +437,7 @@ export const useHintStore = create<HintState>((set, get) => ({
       localBranchId,
       localResetAt,
       startedAt,
+      newChat,
     };
 
     try {
@@ -474,6 +491,8 @@ export const useHintStore = create<HintState>((set, get) => ({
         localBranchId: data.localBranchId ?? null,
         localResetAt: data.localResetAt ?? null,
         startedAt: data.startedAt ?? null,
+        newChat:
+          get().newChat || (!get().isChatTap && (data.newChat ?? false)),
         stateLoaded: true,
       });
 
@@ -505,6 +524,7 @@ export const useHintStore = create<HintState>((set, get) => ({
       endTime: null,
       progress: 0,
       chatData: [],
+      newChat: false,
       generation: localBranchId,
       baseGeneration: current.localBranchId ? current.baseGeneration : current.generation,
       baseRevision: current.localBranchId ? current.baseRevision : current.revision,
@@ -533,9 +553,19 @@ export const useHintStore = create<HintState>((set, get) => ({
 
   applyServerSnapshot: async (snapshot) => {
     if (!snapshot) return;
-    const previousServerMessages = get().chatData.filter((m) => m.type === "server").length;
+    const current = get();
+    const previousServerMessageKeys = new Set(
+      current.chatData
+        .filter((message) => message.type === "server")
+        .map(getChatMessageKey)
+    );
     const chatData = (Array.isArray(snapshot.chatData) ? snapshot.chatData : []).map(
       (message: ChatMessage) => ({ ...message, generation: snapshot.generation })
+    );
+    const hasNewServerMessage = chatData.some(
+      (message: ChatMessage) =>
+        message.type === "server" &&
+        !previousServerMessageKeys.has(getChatMessageKey(message))
     );
     const isRunning = snapshot.isRunning === 1;
     const remainingMs = isRunning
@@ -559,8 +589,7 @@ export const useHintStore = create<HintState>((set, get) => ({
       endTime: isRunning ? Number(snapshot.endTime || 0) : null,
       remainingTime: Math.max(0, Math.floor(remainingMs / 1000)),
       newChat:
-        chatData.filter((m: ChatMessage) => m.type === "server").length >
-        previousServerMessages,
+        current.newChat || (!current.isChatTap && hasNewServerMessage),
     });
     await get().saveAppState();
   },

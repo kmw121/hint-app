@@ -61,7 +61,7 @@
         {
           "icon": "./assets/images/origin/message.png",
           "color": "#FFFFFF",
-          "defaultChannel": "default",
+          "defaultChannel": "chat-messages-v2",
           "enableBackgroundRemoteNotifications": true
         }
       ],

@@ -3,7 +3,6 @@ import useImmersiveMode from "@/hooks/useImmersiveMode";
 import useSocketConnection from "@/hooks/useSocketConnection";
 import { useHintStore } from "@/stores/hintStore";
 import { useThemeStore } from "@/stores/themeStore";
-import "@/tasks/notificationTaskPatch";
 import { getSocket } from "@/utils/socketClient";
 import "@react-native-firebase/app";
 import { useFonts } from "expo-font";
@@ -66,6 +65,8 @@ function ForcedLightOffOverlay() {
 function LayoutInner() {
   const { loadTheme, themeCode, isHorizontal } = useThemeStore();
   const { loadHints, hintCount, usedHintCodes, loadAppState, stateLoaded } = useHintStore();
+  const usedHintCodesKey = usedHintCodes.join(",");
+  const lastUsedHintCode = usedHintCodes[usedHintCodes.length - 1];
 
   useSocketConnection();
 
@@ -145,15 +146,15 @@ function LayoutInner() {
     if (socket && socket.connected) {
       socket.emit("stateAction", {
         themeCode,
-        requestId: `hint-count:${themeCode}:${hintCount}:${usedHintCodes.join(",")}`,
+        requestId: `hint-count:${themeCode}:${hintCount}:${usedHintCodesKey}`,
         action: {
           type: "useHint",
           hintCount,
-          code: usedHintCodes[usedHintCodes.length - 1],
+          code: lastUsedHintCode,
         },
       });
     }
-  }, [hintCount, usedHintCodes, themeCode, stateLoaded]);
+  }, [hintCount, usedHintCodesKey, lastUsedHintCode, themeCode, stateLoaded]);
 
   return (
     <View style={styles.container}>
@@ -189,18 +190,23 @@ export default function Layout() {
 
   useEffect(() => {
     let detach: (() => void) | undefined;
-    (async () => {
+    const initializeNotifications = async () => {
       try {
         await initNotificationsOnce();
       } catch (e) {
         console.log(`알림 초기화 실패: ${e}`);
-      } finally {
-        detach = attachNotificationListeners();
-        setNotifReady(true);
       }
-    })();
+    };
+
+    detach = attachNotificationListeners();
+    void initializeNotifications().finally(() => setNotifReady(true));
+    const appStateSub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") void initializeNotifications();
+    });
+
     return () => {
       if (detach) detach();
+      appStateSub.remove();
     };
   }, []);
 
