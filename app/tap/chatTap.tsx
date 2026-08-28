@@ -13,15 +13,13 @@ import {
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useThemeStore } from "../../stores/themeStore";
 
 export default function ChatTapScreen() {
   const [message, setMessage] = useState("");
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const { flashlightEnabled } = useThemeStore();
-  const { chatData, setChatData, newChat, setIsChatTap } = useHintStore();
+  const { chatData, setChatData } = useHintStore();
 
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", () =>

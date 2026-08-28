@@ -1,12 +1,13 @@
 // src/utils/notifications.ts  (전체 교체)
 import { usePushStore } from "@/stores/pushStore";
+import { useHintStore } from "@/stores/hintStore";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
 
-const ANDROID_CHANNEL_ID = "default-sound-high";
+const ANDROID_CHANNEL_ID = "chat-messages-v2";
 const BG_TASK_NAME = "NOTIFICATION_BACKGROUND_TASK";
 
 // iOS (SDK 53) 포그라운드 표시 정책
@@ -19,11 +20,11 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// 안드로이드 채널 보장 (서버에서 channelId를 default-sound-high로 보내므로 동일하게)
+// 안드로이드 채널 보장 (서버가 보내는 channelId와 동일해야 한다.)
 async function ensureAndroidChannel() {
   if (Platform.OS !== "android") return;
   await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-    name: "Default High",
+    name: "채팅 메시지",
     importance: Notifications.AndroidImportance.MAX,
     sound: "default",
     vibrationPattern: [0, 250, 250, 250],
@@ -52,9 +53,23 @@ function normalizeDataOnly(payload: any) {
   return message;
 }
 
+function markNewChatFromNotification(payload: any) {
+  const message = normalizeDataOnly(payload);
+  const isChat =
+    message?.kind === "chat" ||
+    (message?.kind === "command" && message?.command === "changeChat");
+  if (!isChat) return;
+
+  const hintStore = useHintStore.getState();
+  if (!hintStore.getIsChatTap()) hintStore.setIsNewChat(true);
+}
+
 // Expo Push Token 획득
 async function getPushTokenAsync() {
   if (!Device.isDevice) throw new Error("실기기에서 테스트해줘!");
+
+  // Android 13 이상에서는 권한 요청 전에 채널이 있어야 안정적으로 등록된다.
+  await ensureAndroidChannel();
 
   // 권한
   const perm = await Notifications.getPermissionsAsync();
@@ -64,9 +79,6 @@ async function getPushTokenAsync() {
     status = req.status;
   }
   if (status !== "granted") throw new Error("알림 권한이 필요해!");
-
-  // 안드 채널
-  await ensureAndroidChannel();
 
   // 프로젝트 ID
   const projectId =
@@ -100,6 +112,7 @@ if (!TaskManager.isTaskDefined(BG_TASK_NAME)) {
         const resp = payload as Notifications.NotificationResponse;
         const content = getContentSafe(resp?.notification);
         if (content) {
+          markNewChatFromNotification(content.data);
           console.log("📩 BG 응답:", {
             action: resp.actionIdentifier,
             title: content.title,
@@ -122,6 +135,7 @@ if (!TaskManager.isTaskDefined(BG_TASK_NAME)) {
         const notif = payload.notification as Notifications.Notification;
         const content = getContentSafe(notif);
         if (content) {
+          markNewChatFromNotification(content.data);
           console.log("📩 BG 알림:", {
             title: content.title,
             body: content.body,
@@ -135,6 +149,7 @@ if (!TaskManager.isTaskDefined(BG_TASK_NAME)) {
 
       // 케이스 C) data-only (알림 UI 없이 데이터만)
       const message = normalizeDataOnly(payload);
+      markNewChatFromNotification(message);
       console.log("📩 BG data-only:", message);
     } catch (e) {
       console.log("BG handler crashed:", e);
@@ -181,6 +196,7 @@ export async function initNotificationsOnce(): Promise<string | null> {
 export function attachNotificationListeners() {
   const sub1 = Notifications.addNotificationReceivedListener((n) => {
     const content = getContentSafe(n);
+    markNewChatFromNotification(content?.data);
     console.log("🔔 포그라운드 수신:", {
       title: content?.title,
       body: content?.body,
@@ -190,6 +206,7 @@ export function attachNotificationListeners() {
 
   const sub2 = Notifications.addNotificationResponseReceivedListener((resp) => {
     const content = getContentSafe(resp?.notification);
+    markNewChatFromNotification(content?.data);
     console.log("👉 알림 탭:", {
       action: resp.actionIdentifier,
       title: content?.title,

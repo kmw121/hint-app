@@ -1,7 +1,6 @@
 // hooks/useSocketConnection.ts
 import { useHintStore } from "@/stores/hintStore";
 import { useThemeStore } from "@/stores/themeStore";
-import * as Notifications from "expo-notifications";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
 
@@ -42,89 +41,6 @@ export default function useSocketConnection() {
   const discoveryDone = useRef(false);
   const reconnectFailCount = useRef(0);
   const MAX_RECONNECT_FAILS = 5;
-
-  const ensureChannels = async () => {
-    if (Platform.OS !== "android") return;
-    await Notifications.setNotificationChannelAsync("chat-loud", {
-      name: "Chat (Loud)",
-      importance: Notifications.AndroidImportance.MAX,
-      sound: "default",
-      vibrationPattern: [0, 250, 150, 250],
-      bypassDnd: true,
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
-    await Notifications.setNotificationChannelAsync("silent", {
-      name: "Silent",
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0],
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
-  };
-
-  const notify = useCallback(
-    async (title: string, body: string, data?: Record<string, any>, soundOn = true) => {
-      try {
-        if (Platform.OS === "android") await ensureChannels();
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title,
-            body,
-            data: data ?? {},
-            ...(Platform.OS === "ios" ? { sound: soundOn ? "default" : undefined } : {}),
-            ...(Platform.OS === "android"
-              ? { channelId: soundOn ? "chat-loud" : "silent" }
-              : {}),
-          },
-          trigger: null,
-        });
-      } catch (e) {
-        console.log("notify error:", e);
-      }
-    },
-    [themeCode]
-  );
-
-  const handleIncomingPush = useCallback(
-    async (payload: { title?: string; body?: string; data?: any }) => {
-      try {
-        const { data, body } = payload ?? {};
-        const kind = data?.kind as "chat" | "lightOff" | "lightOffEnd" | undefined;
-
-        if (kind === "chat") {
-          const isTap = getIsChatTap();
-          if (!isTap) setIsNewChat(true);
-          await notify(
-            "새 메시지 도착",
-            body ?? data?.message ?? "메시지를 확인하세요.",
-            { kind: "chat", themeCode },
-            true
-          );
-          return;
-        }
-
-        if (kind === "lightOff") {
-          const duration = Number(data?.duration ?? 5);
-          setForcedLightOff(true);
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          timeoutRef.current = setTimeout(() => setForcedLightOff(false), duration * 1000);
-          return;
-        }
-
-        if (kind === "lightOffEnd") {
-          setForcedLightOff(false);
-          return;
-        }
-
-        if (body) {
-          const isTap = getIsChatTap();
-          if (!isTap) setIsNewChat(true);
-        }
-      } catch (e) {
-        console.log("handleIncomingPush error:", e);
-      }
-    },
-    [getIsChatTap, notify, setForcedLightOff, setIsNewChat, themeCode]
-  );
 
 
   const getPlatformSafe = () => {
@@ -249,6 +165,9 @@ export default function useSocketConnection() {
         if (command === "doSync") {
           // 서버에서 내려준 전체 스냅샷 반영
           const nextChat = Array.isArray(data?.chatData) ? (data.chatData as ChatMsg[]) : [];
+          const previousChat = getChatData();
+          const prevServerCount = previousChat.filter((m) => m.type === "server").length;
+          const nextServerCount = nextChat.filter((m) => m.type === "server").length;
           setChatData(nextChat, false);
 
           changerTimer(
@@ -257,9 +176,6 @@ export default function useSocketConnection() {
           );
           setProgress(data.progress);
 
-          const myChat = getChatData();
-          const prevServerCount = myChat.filter((m) => m.type === "server").length;
-          const nextServerCount = nextChat.filter((m) => m.type === "server").length;
           if (nextServerCount > prevServerCount) {
             const isTap = getIsChatTap();
             if (!isTap) setIsNewChat(true);
@@ -349,32 +265,6 @@ export default function useSocketConnection() {
       console.log("🔁 re-register with pushToken");
     }
   }, [pushToken, themeCode, storedPlatform]);
-
-  // ✅ 푸시 리스너
-  useEffect(() => {
-    const sub1 = Notifications.addNotificationReceivedListener((n) => {
-      const content: any = n.request?.content ?? {};
-      handleIncomingPush({
-        title: (content.title as string | null) || undefined,
-        body: (content.body as string | null) || undefined,
-        data: content.data,
-      });
-    });
-
-    const sub2 = Notifications.addNotificationResponseReceivedListener((resp) => {
-      const content: any = resp.notification?.request?.content ?? {};
-      handleIncomingPush({
-        title: (content.title as string | null) || undefined,
-        body: (content.body as string | null) || undefined,
-        data: content.data,
-      });
-    });
-
-    return () => {
-      sub1.remove();
-      sub2.remove();
-    };
-  }, [handleIncomingPush]);
 
   // ✅ 앱이 포그라운드로 돌아올 때 소켓 연결 상태 확인 → 끊겼으면 재연결/재탐색
   useEffect(() => {

@@ -1,4 +1,3 @@
-import { useHintStore } from "@/stores/hintStore";
 import { usePathname, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import {
@@ -56,7 +55,6 @@ export default function TabBar({
   const pathname = usePathname();
   const { width, height } = useWindowDimensions();
   const newChatAnim = useRef(new Animated.Value(0)).current;
-  const { setIsNewChat } = useHintStore();
   const tabCount = flashlightEnabled ? 6 : 5;
   const tabBarWidth = width * TAB_BAR_WIDTH_RATIO;
   const buttonSize = Math.floor(
@@ -73,26 +71,38 @@ export default function TabBar({
   const iconSize = Math.floor(buttonSize * ICON_SCALE);
 
   useEffect(() => {
-    if (newChat) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(newChatAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: false,
-          }),
-          Animated.timing(newChatAnim, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: false,
-          }),
-        ])
-      ).start();
-    } else {
+    if (!newChat) {
       newChatAnim.stopAnimation();
       newChatAnim.setValue(0);
+      return;
     }
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(newChatAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+        Animated.timing(newChatAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    animation.start();
+
+    return () => {
+      animation.stop();
+      newChatAnim.setValue(0);
+    };
   }, [newChat, newChatAnim]);
+
+  useEffect(() => {
+    const isChatActive = pathname === TabRoutes.Chat;
+    setIsChatTap?.(isChatActive);
+  }, [pathname, setIsChatTap]);
 
   const renderTab = (
     key: keyof typeof TabRoutes,
@@ -108,7 +118,7 @@ export default function TabBar({
         ? {
             backgroundColor: newChatAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: ["#FFFFFF", "#FFDD00"],
+              outputRange: ["#FFF4A3", "#FFDD00"],
             }),
           }
         : {};
@@ -118,8 +128,6 @@ export default function TabBar({
         key={key}
         style={[styles.tabTouchable, { width: buttonSize, height: buttonSize }]}
         onPress={() => {
-          if (setIsChatTap) setIsChatTap(key === "Chat");
-          if (key === "Chat") setIsNewChat(false);
           router.push(path);
         }}
         activeOpacity={0.8}
