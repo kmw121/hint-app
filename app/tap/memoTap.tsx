@@ -1,5 +1,6 @@
 import { useMemo, useRef } from "react";
 import {
+  GestureResponderEvent,
   Image,
   PanResponder,
   StyleSheet,
@@ -15,8 +16,37 @@ import { useThemeStore } from "../../stores/themeStore";
 import eraserIcon from "../../assets/images/origin/eraser.png";
 import resetIcon from "../../assets/images/origin/reset.png";
 
+type DrawingFrame = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+const getDrawingPoint = (
+  event: GestureResponderEvent,
+  frame: DrawingFrame
+) => {
+  const { locationX, locationY, pageX, pageY } = event.nativeEvent;
+  const hasMeasuredFrame = frame.width > 0 && frame.height > 0;
+  const rawX = hasMeasuredFrame ? pageX - frame.x : locationX;
+  const rawY = hasMeasuredFrame ? pageY - frame.y : locationY;
+
+  return {
+    x: Math.max(0, Math.min(frame.width || rawX, rawX)),
+    y: Math.max(0, Math.min(frame.height || rawY, rawY)),
+  };
+};
+
 export default function MemoTapScreen() {
   const { flashlightEnabled } = useThemeStore();
+  const drawingAreaRef = useRef<View>(null);
+  const drawingFrameRef = useRef<DrawingFrame>({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
 
   const {
     strokes,
@@ -39,12 +69,14 @@ export default function MemoTapScreen() {
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onPanResponderGrant: (evt) => {
-          const { locationX, locationY } = evt.nativeEvent;
-          fnRef.current.addPointToCurrent({ x: locationX, y: locationY });
+          fnRef.current.addPointToCurrent(
+            getDrawingPoint(evt, drawingFrameRef.current)
+          );
         },
         onPanResponderMove: (evt) => {
-          const { locationX, locationY } = evt.nativeEvent;
-          fnRef.current.addPointToCurrent({ x: locationX, y: locationY });
+          fnRef.current.addPointToCurrent(
+            getDrawingPoint(evt, drawingFrameRef.current)
+          );
         },
         onPanResponderRelease: () => {
           fnRef.current.commitCurrentStroke();
@@ -89,7 +121,29 @@ export default function MemoTapScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <View style={styles.drawingArea} {...panResponder.panHandlers}>
+        <View
+          ref={drawingAreaRef}
+          style={styles.drawingArea}
+          onLayout={(event) => {
+            const { width, height } = event.nativeEvent.layout;
+            drawingFrameRef.current = {
+              ...drawingFrameRef.current,
+              width,
+              height,
+            };
+            drawingAreaRef.current?.measureInWindow(
+              (x, y, measuredWidth, measuredHeight) => {
+                drawingFrameRef.current = {
+                  x,
+                  y,
+                  width: measuredWidth,
+                  height: measuredHeight,
+                };
+              }
+            );
+          }}
+          {...panResponder.panHandlers}
+        >
           <Svg style={{ flex: 1 }}>
             {strokes.map((stroke, idx) => (
               <Path
