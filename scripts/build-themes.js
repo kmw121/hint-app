@@ -22,7 +22,7 @@ const defaultProgressSteps = Array.from({ length: 21 }, (_, index) => index * 5)
 
 const themeCodes = process.argv
   .slice(2)
-  .flatMap((value) => value.split(","))
+  .flatMap((value) => value.split(/[,\s]+/))
   .map((value) => value.trim())
   .filter(Boolean);
 
