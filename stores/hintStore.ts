@@ -554,6 +554,13 @@ export const useHintStore = create<HintState>((set, get) => ({
   applyServerSnapshot: async (snapshot) => {
     if (!snapshot) return;
     const current = get();
+    const resetGenerationChanged =
+      Number(snapshot.resetAt || 0) > 0 &&
+      Boolean(snapshot.generation) &&
+      snapshot.generation !== current.generation;
+    if (resetGenerationChanged) {
+      useMemoStore.getState().clearStrokes();
+    }
     const previousServerMessageKeys = new Set(
       current.chatData
         .filter((message) => message.type === "server")
