@@ -1,5 +1,6 @@
 // hooks/useSocketConnection.ts
 import { useHintStore } from "@/stores/hintStore";
+import { useMemoStore } from "@/stores/memoStore";
 import { useThemeStore } from "@/stores/themeStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
@@ -101,14 +102,22 @@ export default function useSocketConnection() {
         }
       });
 
-      s.on("stateSnapshot", async ({ snapshot }: { snapshot: any }) => {
-        await applyServerSnapshot(snapshot);
-        s.emit("snapshotAck", {
-          themeCode,
-          generation: snapshot?.generation,
-          revision: snapshot?.revision,
-        });
-      });
+      s.on(
+        "stateSnapshot",
+        async (
+          { snapshot, actionType }: { snapshot: any; actionType?: string }
+        ) => {
+          if (actionType === "reset") {
+            useMemoStore.getState().clearStrokes();
+          }
+          await applyServerSnapshot(snapshot);
+          s.emit("snapshotAck", {
+            themeCode,
+            generation: snapshot?.generation,
+            revision: snapshot?.revision,
+          });
+        }
+      );
 
       s.on("command", ({ command, data }: { command: string; data: any }) => {
         if (command === "startTimer") {
