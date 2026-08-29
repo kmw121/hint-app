@@ -12,10 +12,6 @@ import { getOrCreateSocket } from "@/utils/socketClient";
 import type { Socket } from "socket.io-client";
 
 type ChatMsg = { type: "client" | "server" | "app"; data: string; createdAt: string };
-type AppPresenceState = "active" | "background";
-
-const getAppPresenceState = (): AppPresenceState =>
-  AppState.currentState === "background" ? "background" : "active";
 
 export default function useSocketConnection() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +60,6 @@ export default function useSocketConnection() {
         themeCode,
         pushToken: pushToken || undefined,
         platform: getPlatformSafe(),
-        appState: getAppPresenceState(),
       },
       (registration: any) => {
         if (registration?.status !== "registered") return;
@@ -294,7 +289,6 @@ export default function useSocketConnection() {
         themeCode,
         pushToken,
         platform: getPlatformSafe(),
-        appState: getAppPresenceState(),
       });
       console.log("🔁 re-register with pushToken");
     }
@@ -320,26 +314,16 @@ export default function useSocketConnection() {
     return () => subscription.remove();
   }, [triggerRediscovery]);
 
-  // 앱의 포그라운드/백그라운드 상태를 서버에 알리고, 복귀 시 재연결한다.
+  // 앱이 포그라운드로 돌아올 때 소켓 연결 상태를 확인한다.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (nextState) => {
-      const s = socketRef.current;
-
-      if (nextState === "background") {
-        if (s?.connected) {
-          s.emit("appPresence", { state: "background" });
-        }
-        return;
-      }
-
       if (nextState === "active") {
-        if (s?.connected) {
-          s.emit("appPresence", { state: "active" });
-        } else if (s) {
+        const s = socketRef.current;
+        if (s && !s.connected) {
           console.log("🔄 앱 복귀 → 소켓 재연결 시도");
           s.io.reconnection(true);
           s.connect();
-        } else {
+        } else if (!s) {
           // 소켓 자체가 없으면 재탐색
           triggerRediscovery();
         }
