@@ -2,6 +2,7 @@
 import { useHintStore } from "@/stores/hintStore";
 import { useMemoStore } from "@/stores/memoStore";
 import { useThemeStore } from "@/stores/themeStore";
+import * as Network from "expo-network";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
 
@@ -44,6 +45,7 @@ export default function useSocketConnection() {
 
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const discoveryDone = useRef(false);
+  const rediscoveryInFlight = useRef(false);
   const reconnectFailCount = useRef(0);
   const MAX_RECONNECT_FAILS = 5;
 
@@ -219,11 +221,28 @@ export default function useSocketConnection() {
 
   // ✅ 서버 재탐색 트리거 (연결 실패 시 호출)
   const triggerRediscovery = useCallback(async () => {
-    const { clearServerUrl } = await import("@/utils/serverDiscovery");
-    await clearServerUrl();
-    const url = await discoverServerUrl();
-    if (url && url !== serverUrl) {
-      setServerUrl(url);
+    if (rediscoveryInFlight.current) return;
+    rediscoveryInFlight.current = true;
+    try {
+      const { clearServerUrl } = await import("@/utils/serverDiscovery");
+      await clearServerUrl();
+      const url = await discoverServerUrl();
+      if (!url) return;
+
+      if (url !== serverUrl) {
+        setServerUrl(url);
+        return;
+      }
+
+      const socket = socketRef.current;
+      if (socket && !socket.connected) {
+        socket.io.reconnection(true);
+        socket.connect();
+      }
+    } catch (error) {
+      console.warn("서버 재탐색 실패", error);
+    } finally {
+      rediscoveryInFlight.current = false;
     }
   }, [serverUrl]);
 
@@ -281,6 +300,26 @@ export default function useSocketConnection() {
     }
   }, [pushToken, themeCode, storedPlatform]);
 
+  // 와이파이/LAN 연결이 복구되면 같은 서버 주소라도 소켓을 다시 연다.
+  useEffect(() => {
+    const subscription = Network.addNetworkStateListener((networkState) => {
+      if (!networkState.isConnected) return;
+
+      const socket = socketRef.current;
+      if (socket?.connected) return;
+
+      if (socket) {
+        console.log("🔄 네트워크 복구 → 소켓 재연결 시도");
+        socket.io.reconnection(true);
+        socket.connect();
+      } else {
+        triggerRediscovery();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [triggerRediscovery]);
+
   // 앱의 포그라운드/백그라운드 상태를 서버에 알리고, 복귀 시 재연결한다.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (nextState) => {
@@ -298,6 +337,7 @@ export default function useSocketConnection() {
           s.emit("appPresence", { state: "active" });
         } else if (s) {
           console.log("🔄 앱 복귀 → 소켓 재연결 시도");
+          s.io.reconnection(true);
           s.connect();
         } else {
           // 소켓 자체가 없으면 재탐색
