@@ -1,13 +1,15 @@
 import { usePathname, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Image,
+  Keyboard,
   StyleSheet,
   TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /* 아이콘 PNG (경로: ../assets/images/flight/taps/) */
 import chatTap from "../assets/images/flight/taps/chatTap.png";
@@ -32,13 +34,7 @@ const TabRoutes = {
   Setting: "/tap/settingTap",
 } as const;
 
-const TAB_BAR_WIDTH_RATIO = 0.12;
-const TAB_BAR_EDGE_GAP = 35;
-const TAB_BAR_SIDE_GAP = 12;
-const TAB_GAP_MIN = 8;
-const TAB_BUTTON_MAX = 86;
-const TAB_BUTTON_MIN = 52;
-const ICON_SCALE = 0.78;
+const TAB_BUTTON_MAX = 54;
 
 interface Props {
   newChat: boolean;
@@ -53,22 +49,19 @@ export default function TabBar({
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const newChatAnim = useRef(new Animated.Value(0)).current;
   const tabCount = flashlightEnabled ? 6 : 5;
-  const tabBarWidth = width * TAB_BAR_WIDTH_RATIO;
-  const buttonSize = Math.floor(
-    Math.max(
-      TAB_BUTTON_MIN,
-      Math.min(
-        TAB_BUTTON_MAX,
-        tabBarWidth - TAB_BAR_SIDE_GAP * 2,
-        (height - TAB_BAR_EDGE_GAP * 2 - TAB_GAP_MIN * (tabCount - 1)) /
-          tabCount
-      )
-    )
-  );
-  const iconSize = Math.floor(buttonSize * ICON_SCALE);
+  const buttonSize = Math.min(TAB_BUTTON_MAX, Math.floor((width - 24 - (tabCount - 1) * 4) / tabCount));
+  const iconSize = Math.floor(buttonSize * 0.68);
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     if (!newChat) {
@@ -153,8 +146,10 @@ export default function TabBar({
     );
   };
 
+  if (keyboardVisible) return null;
+
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { height: 68 + insets.bottom, paddingBottom: Math.max(insets.bottom, 8) }]}>
       {renderTab("Main", indexIcon, indexActive, TabRoutes.Main)}
       {renderTab("Hint", hintTap, hintTapActive, TabRoutes.Hint)}
       {renderTab("Chat", chatTap, chatTapActive, TabRoutes.Chat)}
@@ -167,16 +162,15 @@ export default function TabBar({
 }
 const styles = StyleSheet.create({
   tabBar: {
-    height: "100%",
-    width: "12%",
-    flexDirection: "column",
+    width: "100%",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingBottom: TAB_BAR_EDGE_GAP,
-    paddingHorizontal: TAB_BAR_SIDE_GAP,
-    paddingTop: 35, // 👉 위아래 여백 줄임
+    justifyContent: "space-evenly",
+    paddingHorizontal: 12,
+    paddingTop: 6,
     backgroundColor: "#264d84",
     position: "absolute",
+    bottom: 0,
   },
   tabTouchable: {
     borderRadius: 10,

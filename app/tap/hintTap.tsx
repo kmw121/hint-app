@@ -95,7 +95,7 @@ export default function HintTapScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={isKeyboardVisible ? 35 : -3}
+        keyboardVerticalOffset={isKeyboardVisible ? 100 : -3}
       >
         <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
@@ -160,10 +160,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingBottom: 30,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   label: {
-    fontSize: 26,
+    fontSize: 21,
     marginBottom: 10,
     color: "#2b2b2b",
     fontWeight: "bold",
@@ -181,18 +181,18 @@ const styles = StyleSheet.create({
     borderColor: "#2b2b2b",
     borderRadius: 15,
     paddingHorizontal: 12,
-    height: 60,
+    height: 50,
     marginRight: 8,
     backgroundColor: "#fff",
     color: "#2B2B2B",
-    fontSize: 24,
+    fontSize: 17,
   },
   button: {
     backgroundColor: "#2b2b2b",
-    paddingVertical: 18,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 15,
-    height: 60,
+    height: 50,
   },
   buttonText: {
     fontWeight: "bold",

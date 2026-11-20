@@ -65,7 +65,7 @@ const defaultPersist: ThemePersistShape = {
   themeCode: DEFAULT_THEME_CODE,
   buildThemeName: DEFAULT_THEME_NAME,
   lightOffTime: 0,
-  isHorizontal: true,
+  isHorizontal: false,
   showProgress: true, // 기본값 노출
 };
 
@@ -82,7 +82,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   themeCode: DEFAULT_THEME_CODE,
   buildThemeName: DEFAULT_THEME_NAME,
   lightOffTime: 0,
-  isHorizontal: true,
+  isHorizontal: false,
   showProgress: true, // ✅
 
   // ===== 액션 =====
@@ -142,7 +142,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       canConnect: parsed?.canConnect ?? defaultPersist.canConnect,
       themeCode: defaultPersist.themeCode,
       buildThemeName: defaultPersist.buildThemeName,
-      isHorizontal: parsed?.isHorizontal ?? defaultPersist.isHorizontal,
+      isHorizontal: false,
       showProgress: parsed?.showProgress ?? defaultPersist.showProgress, // ✅
     };
 

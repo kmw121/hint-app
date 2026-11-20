@@ -11,6 +11,7 @@ import {
   Text,
   TouchableOpacity,
   UIManager,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -27,6 +28,7 @@ if (
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function IndexScreen() {
+  const { width } = useWindowDimensions();
   const [containerHeight, setContainerHeight] = useState(0);
   const [calculatedSize, setCalculatedSize] = useState<{
     width: number;
@@ -133,10 +135,13 @@ export default function IndexScreen() {
         >
           <View style={styles.TemaName}>
             <Text
+              numberOfLines={2}
+              adjustsFontSizeToFit
               style={{
                 fontFamily: "PretendardBold",
-                fontSize: 100,
+                fontSize: Math.min(42, width * 0.11),
                 color: "#2b2b2b",
+                textAlign: "center",
               }}
             >
               {title}
@@ -152,6 +157,7 @@ export default function IndexScreen() {
                     fontFamily: "PretendardBold",
                     fontWeight: "normal",
                     color: "#2b2b2b",
+                    fontSize: Math.min(56, width * 0.15),
                   },
                 ]}
               >
@@ -165,6 +171,7 @@ export default function IndexScreen() {
                   fontFamily: "PretendardBold",
                   fontWeight: "normal",
                   color: "#2b2b2b",
+                  fontSize: Math.min(17, width * 0.045),
                 },
               ]}
             >
@@ -179,6 +186,7 @@ export default function IndexScreen() {
                 {
                   fontFamily: "PretendardBold",
                   fontWeight: "normal",
+                  fontSize: Math.min(15, width * 0.039),
                 },
               ]}
             >
@@ -214,27 +222,26 @@ const styles = StyleSheet.create({
   TemaName: {
     justifyContent: "center",
     alignItems: "center",
-    margin: 10,
-    fontSize: 200,
+    marginHorizontal: 16,
+    marginVertical: 12,
     flex: 1,
   },
   statusBar: {
-    paddingVertical: 6,
-    paddingHorizontal: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   statusText: {
-    height: 100,
-    fontSize: 50,
+    minHeight: 24,
     fontWeight: "bold",
     textAlign: "center",
     color: "#2b2b2b",
   },
   fixedBottomBox: {
-    height: 150,
+    minHeight: 110,
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   timerText: {
     fontSize: 80,

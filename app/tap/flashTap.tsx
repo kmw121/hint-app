@@ -70,14 +70,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: {
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: "bold",
     marginBottom: 20,
     color: "#fff",
   },
   button: {
     paddingVertical: 14,
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
     backgroundColor: "#888",
     borderRadius: 999,
   },

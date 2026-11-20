@@ -210,8 +210,8 @@ export default function MemoTapScreen() {
   );
 }
 
-const BTN_SIZE = 50;
-const ICON_SIZE = 36;
+const BTN_SIZE = 42;
+const ICON_SIZE = 28;
 const styles = StyleSheet.create({
   container: { flex: 1 },
   drawingArea: { flex: 1, backgroundColor: "#ffffff" },
@@ -224,16 +224,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#ccc",
     backgroundColor: "#fff",
-    height: 90,
+    height: 64,
   },
 
   colorButtonBase: {
-    width: 52,
-    height: 52,
+    width: 42,
+    height: 42,
     borderRadius: 14,
   },
   buttonSelected: {
-    transform: [{ scale: 1.5 }],
+    transform: [{ scale: 1.15 }],
   },
 
   iconButton: {

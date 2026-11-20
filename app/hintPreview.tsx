@@ -15,7 +15,7 @@ import { useHintStore } from "../stores/hintStore";
 
 export default function HintPreviewScreen() {
   const { width, height } = useWindowDimensions();
-  const FOOTER_HEIGHT = height * 0.1;
+  const FOOTER_HEIGHT = 56;
 
   const { code } = useLocalSearchParams();
   const router = useRouter();
@@ -81,10 +81,10 @@ export default function HintPreviewScreen() {
     });
   }, []);
 
-  const targetWidth = Math.max(0, width * 0.8);
+  const targetWidth = Math.max(0, width - 56);
   const computedImageWidth = targetWidth;
   const computedImageHeight = imageRatio
-    ? targetWidth * imageRatio
+    ? Math.min(targetWidth * imageRatio, height * 0.42)
     : targetWidth * 0.5;
 
   if (!matched) {

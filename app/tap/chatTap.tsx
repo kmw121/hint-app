@@ -64,7 +64,7 @@ export default function ChatTapScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={isKeyboardVisible ? 35 : -3}
+        keyboardVerticalOffset={isKeyboardVisible ? 100 : -3}
       >
         <View style={styles.container}>
           <ScrollView
@@ -138,7 +138,7 @@ export default function ChatTapScreen() {
             )}
           </ScrollView>
 
-          <View style={styles.inputRow}>
+          <View style={[styles.inputRow, isKeyboardVisible && { marginBottom: 12 }]}>
             <TextInput
               style={[
                 styles.input,
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   chatBox: {
     flexGrow: 1,
-    padding: 16,
+    padding: 12,
     justifyContent: "flex-end",
   },
   chatPlaceholder: {
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   // ✅ 버블/배경 없이 좌우 정렬
   messageLine: {
     marginVertical: 6,
-    maxWidth: "92%",
+    maxWidth: "88%",
   },
   leftLine: {
     alignSelf: "flex-start", // server 왼쪽
@@ -205,8 +205,8 @@ const styles = StyleSheet.create({
   },
 
   messageText: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 23,
     flexShrink: 1,
   },
   incomingText: {
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   timeText: {
-    fontSize: 14,
+    fontSize: 11,
     color: "#999",
   },
   serverTimeText: {
@@ -237,18 +237,18 @@ const styles = StyleSheet.create({
     borderColor: "#2b2b2b",
     borderRadius: 15,
     paddingHorizontal: 10,
-    height: 60,
+    minHeight: 48,
     marginRight: 8,
     color: "#2b2b2b",
-    fontSize: 24,
+    fontSize: 16,
     backgroundColor: "#fff",
   },
   sendButton: {
     backgroundColor: "#2b2b2b",
     paddingHorizontal: 16,
-    paddingVertical: 18,
+    paddingVertical: 14,
     borderRadius: 15,
-    height: 60,
+    minHeight: 48,
   },
   sendText: {
     color: "#fff",
