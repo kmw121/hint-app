@@ -14,12 +14,14 @@ import {
   ActivityIndicator,
   AppState,
   ImageBackground,
+  Keyboard,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TabBar from "../components/TabBar";
 import FlashTorch from "./layout/flashTorch";
 
@@ -63,12 +65,20 @@ function ForcedLightOffOverlay() {
 }
 
 function LayoutInner() {
-  const { loadTheme, themeCode, isHorizontal } = useThemeStore();
+  const { loadTheme, themeCode } = useThemeStore();
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const { loadHints, hintCount, usedHintCodes, loadAppState, stateLoaded } = useHintStore();
   const usedHintCodesKey = usedHintCodes.join(",");
   const lastUsedHintCode = usedHintCodes[usedHintCodes.length - 1];
 
   useSocketConnection();
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   // ✅ 훅 내부에서 초기 1회 적용, kick은 복귀/회전 시점에 사용
   const kickImmersive = useImmersiveMode();
@@ -85,19 +95,11 @@ function LayoutInner() {
   // 방향 잠금 후 immersive 재적용
   useEffect(() => {
     (async () => {
-      if (isHorizontal) {
-        await ScreenOrientation.lockAsync(
-          ScreenOrientation.OrientationLock.LANDSCAPE
-        );
-      } else {
-        await ScreenOrientation.lockAsync(
-          ScreenOrientation.OrientationLock.PORTRAIT
-        );
-      }
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
       // 방향 잠금 직후 한 번
       kickImmersive();
     })();
-  }, [isHorizontal, kickImmersive]);
+  }, [kickImmersive]);
 
   // ⭐ AppState 리스너 개선: 다중 재시도 로직 추가
   useEffect(() => {
@@ -159,7 +161,7 @@ function LayoutInner() {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" hidden />
-      <View style={styles.contentMain}>
+      <View style={[styles.contentMain, { marginTop: Math.max(insets.top, 12), marginBottom: keyboardVisible ? 8 : 80 + insets.bottom }]}>
         <ImageBackground
           source={backgroundImage}
           style={styles.contentBackground}
@@ -258,10 +260,9 @@ const styles = StyleSheet.create({
   },
   contentMain: {
     flex: 1,
-    margin: 35,
-    marginLeft: "12%",
+    marginHorizontal: 12,
     borderCurve: "circular",
-    borderRadius: 20,
+    borderRadius: 18,
     backgroundColor: "#ffffff",
   },
   contentBackground: {

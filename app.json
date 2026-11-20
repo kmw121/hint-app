@@ -3,7 +3,7 @@
     "name": "test Hint",
     "slug": "hint-app",
     "version": "1.0.0",
-    "orientation": "default",
+    "orientation": "portrait",
     "icon": "./assets/images/origin/icon.png",
     "scheme": "hintapp",
     "userInterfaceStyle": "automatic",

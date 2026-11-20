@@ -32,9 +32,7 @@ export default function TemaAdminScreen() {
     themeImage,
     canConnect,
     lightOffTime,
-    isHorizontal,
     showProgress, // ✅ 추가
-    setIsHorizontal,
     setTitle,
     setMinutes,
     setSeconds,
@@ -53,7 +51,6 @@ export default function TemaAdminScreen() {
   const [tempResetCode, setTempResetCode] = useState(resetCode);
   const [tempFlashlight, setTempFlashlight] = useState(flashlightEnabled);
   const [tempImage, setTempImage] = useState(themeImage);
-  const [tempHorizontal, setTempHorizontal] = useState(isHorizontal);
   const [tempCanConnect, setTempCanConnect] = useState(canConnect);
   const [tempLightOffTime, setTempLightOffTime] = useState(
     lightOffTime.toString()
@@ -70,7 +67,6 @@ export default function TemaAdminScreen() {
     setTempResetCode(resetCode);
     setTempFlashlight(flashlightEnabled);
     setTempImage(themeImage);
-    setTempHorizontal(isHorizontal);
     setTempCanConnect(canConnect);
     setTempLightOffTime(lightOffTime.toString());
     setTempShowProgress(showProgress); // ✅ 동기화
@@ -81,7 +77,6 @@ export default function TemaAdminScreen() {
     resetCode,
     flashlightEnabled,
     themeImage,
-    isHorizontal,
     canConnect,
     lightOffTime,
     showProgress, // ✅
@@ -109,7 +104,6 @@ export default function TemaAdminScreen() {
     setSeconds(sanitizedSeconds);
     setResetCode(tempResetCode);
     if (tempFlashlight !== flashlightEnabled) toggleFlashlight();
-    if (tempHorizontal !== isHorizontal) setIsHorizontal(tempHorizontal);
     setThemeImage(tempImage ?? null);
     setCanConnect(tempCanConnect);
     setLightOffTime(Number(tempLightOffTime));
@@ -126,7 +120,6 @@ export default function TemaAdminScreen() {
       tempResetCode !== resetCode ||
       tempFlashlight !== flashlightEnabled ||
       tempImage !== themeImage ||
-      tempHorizontal !== isHorizontal ||
       tempCanConnect !== canConnect ||
       tempLightOffTime !== lightOffTime.toString() ||
       tempShowProgress !== showProgress; // ✅ 변경감지
@@ -327,22 +320,6 @@ export default function TemaAdminScreen() {
               />
             </>
           )}
-
-          <View style={styles.switchRow}>
-            <Text
-              style={[
-                styles.label,
-                {
-                  fontFamily: "PretendardBold",
-                  fontWeight: "normal",
-                  color: "#2b2b2b",
-                },
-              ]}
-            >
-              가로모드 사용
-            </Text>
-            <Switch value={tempHorizontal} onValueChange={setTempHorizontal} />
-          </View>
 
           {/* 대표 이미지 영역(주석 유지) */}
 

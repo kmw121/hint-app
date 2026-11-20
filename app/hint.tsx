@@ -15,7 +15,7 @@ import { useHintStore } from "../stores/hintStore";
 
 export default function HintDetailScreen() {
   const { width, height } = useWindowDimensions();
-  const FOOTER_HEIGHT = height * 0.1;
+  const FOOTER_HEIGHT = 56;
 
   const { code } = useLocalSearchParams();
   const { hints } = useHintStore();
@@ -81,10 +81,10 @@ export default function HintDetailScreen() {
     });
   }, []);
 
-  const targetWidth = Math.max(0, width * 0.8);
+  const targetWidth = Math.max(0, width - 56);
   const computedImageWidth = targetWidth;
   const computedImageHeight = imageRatio
-    ? targetWidth * imageRatio
+    ? Math.min(targetWidth * imageRatio, height * 0.42)
     : targetWidth * 0.5;
 
   if (!matched) {
@@ -115,7 +115,7 @@ export default function HintDetailScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            minHeight: height - FOOTER_HEIGHT * 0.3,
+            minHeight: Math.max(0, height - 170),
             paddingBottom: matched.answer || matched.text ? FOOTER_HEIGHT : 0,
             // ✅ 이미지 없을 때 세로 중앙 정렬
             justifyContent: hasImage ? "flex-start" : "center",
