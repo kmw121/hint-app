@@ -2,10 +2,12 @@ import { Camera } from "expo-camera";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useThemeStore } from "../../stores/themeStore";
+import { useHintStore } from "../../stores/hintStore";
 
 export default function FlashTapScreen() {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const { flashlightEnabled, flashlightOn, setFlashlightOn } = useThemeStore();
+  const forcedLightOff = useHintStore((state) => state.forcedLightOff);
 
   useEffect(() => {
     const requestPermission = async () => {
@@ -16,6 +18,7 @@ export default function FlashTapScreen() {
   }, []);
 
   const toggleFlashlight = () => {
+    if (forcedLightOff) return;
     if (!permissionGranted) {
       console.warn("카메라 권한이 필요해요!");
       return;
@@ -26,20 +29,9 @@ export default function FlashTapScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.middleContent}>
-        <Text
-          style={[
-            styles.title,
-            {
-              fontFamily: "PretendardBold",
-              fontWeight: "normal",
-            },
-          ]}
-        >
-          플래시 제어
-        </Text>
-
         <TouchableOpacity
           onPress={toggleFlashlight}
+          disabled={forcedLightOff}
           style={[styles.button, flashlightOn && styles.buttonOn]}
         >
           <Text

@@ -1,5 +1,6 @@
 import { getSocket } from "@/utils/socketClient";
 import * as FileSystem from "expo-file-system";
+import { Keyboard } from "react-native";
 import { create } from "zustand";
 import { deleteImageIfExists } from "../utils/fileHelpers";
 import { useMemoStore } from "./memoStore";
@@ -12,6 +13,9 @@ export interface Hint {
   code: string;
   text: string;
   imageUri: string | null | undefined;
+  imageAspectRatio?: number;
+  imageWidth?: number;
+  imageHeight?: number;
   answer: string;
 }
 
@@ -76,6 +80,10 @@ interface HintState {
 
   forcedLightOff: boolean;
   setForcedLightOff: (value: boolean) => void;
+  blackoutExpiresAt: number | null;
+  blackoutRevision: number;
+  blackoutRestoreTorchOn: boolean;
+  setBlackoutState: (state: { active: boolean; expiresAt: number | null; revision: number }) => void;
 
   chatData: ChatMessage[];
   setChatData: (messages: ChatMessage[], isClient?: boolean) => void;
@@ -155,6 +163,9 @@ export const useHintStore = create<HintState>((set, get) => ({
       code: "",
       text: "",
       imageUri: "",
+      imageAspectRatio: undefined,
+      imageWidth: undefined,
+      imageHeight: undefined,
       answer: "",
     };
     const current = [...get().editHints, newHint];
@@ -369,8 +380,30 @@ export const useHintStore = create<HintState>((set, get) => ({
   },
 
   forcedLightOff: false,
+  blackoutExpiresAt: null,
+  blackoutRevision: 0,
+  blackoutRestoreTorchOn: false,
   setForcedLightOff: (value) => {
     set({ forcedLightOff: value });
+  },
+  setBlackoutState: (state) => {
+    const expiresAt = Number(state.expiresAt);
+    const active = state.active && Number.isFinite(expiresAt) && expiresAt > Date.now();
+    if (active) Keyboard.dismiss();
+    const previous = get();
+    const restoreTorchOn = active && !previous.forcedLightOff
+      ? useThemeStore.getState().flashlightOn
+      : previous.blackoutRestoreTorchOn;
+    if (!active && previous.forcedLightOff) {
+      useThemeStore.getState().setFlashlightOn(restoreTorchOn);
+    }
+    set({
+      forcedLightOff: active,
+      blackoutExpiresAt: active ? expiresAt : null,
+      blackoutRevision: Number.isSafeInteger(state.revision) ? state.revision : 0,
+      blackoutRestoreTorchOn: active ? restoreTorchOn : false,
+    });
+    if (get().stateLoaded) void get().saveAppState();
   },
 
   chatData: [],
@@ -420,6 +453,9 @@ export const useHintStore = create<HintState>((set, get) => ({
       localResetAt,
       startedAt,
       newChat,
+      blackoutExpiresAt,
+      blackoutRevision,
+      blackoutRestoreTorchOn,
     } = get();
     const data = {
       hintCount,
@@ -438,6 +474,9 @@ export const useHintStore = create<HintState>((set, get) => ({
       localResetAt,
       startedAt,
       newChat,
+      blackoutExpiresAt,
+      blackoutRevision,
+      blackoutRestoreTorchOn,
     };
 
     try {
@@ -466,6 +505,9 @@ export const useHintStore = create<HintState>((set, get) => ({
       const json = await FileSystem.readAsStringAsync(STATE_FILE);
       const data = JSON.parse(json);
       const now = Date.now();
+      const savedBlackoutExpiresAt = Number(data.blackoutExpiresAt);
+      const blackoutActive = savedBlackoutExpiresAt > now;
+      const restoreTorchOn = Boolean(data.blackoutRestoreTorchOn);
       let remaining = 0;
       if (data.isRunning) {
         remaining = data.endTime
@@ -493,8 +535,13 @@ export const useHintStore = create<HintState>((set, get) => ({
         startedAt: data.startedAt ?? null,
         newChat:
           get().newChat || (!get().isChatTap && (data.newChat ?? false)),
+        forcedLightOff: blackoutActive,
+        blackoutExpiresAt: blackoutActive ? savedBlackoutExpiresAt : null,
+        blackoutRevision: Number(data.blackoutRevision) || 0,
+        blackoutRestoreTorchOn: blackoutActive && restoreTorchOn,
         stateLoaded: true,
       });
+      if (restoreTorchOn) useThemeStore.getState().setFlashlightOn(true);
 
       if (data.isRunning && remaining > 0) {
         get().startTimer(0, remaining * 1000);

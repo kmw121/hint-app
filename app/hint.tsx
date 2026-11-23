@@ -25,6 +25,8 @@ export default function HintDetailScreen() {
     text: string;
     imageUri: string | null | undefined;
     answer: string;
+    imageWidth?: number;
+    imageHeight?: number;
   } | null>(null);
 
   const [imageRatio, setImageRatio] = useState<number | null>(null);
@@ -39,6 +41,8 @@ export default function HintDetailScreen() {
           text: found.text,
           imageUri: found.imageUri,
           answer: found.answer ?? "",
+          imageWidth: found.imageWidth,
+          imageHeight: found.imageHeight,
         });
       } else {
         setMatched(null);
@@ -82,10 +86,10 @@ export default function HintDetailScreen() {
   }, []);
 
   const targetWidth = Math.max(0, width - 56);
-  const computedImageWidth = targetWidth;
-  const computedImageHeight = imageRatio
-    ? Math.min(targetWidth * imageRatio, height * 0.42)
-    : targetWidth * 0.5;
+  const ratio = imageRatio || (matched?.imageWidth && matched?.imageHeight ? matched.imageHeight / matched.imageWidth : 0.5);
+  const desiredWidth = matched?.imageWidth || targetWidth;
+  const computedImageWidth = Math.min(desiredWidth, targetWidth, height * 0.42 / ratio);
+  const computedImageHeight = computedImageWidth * ratio;
 
   if (!matched) {
     return (

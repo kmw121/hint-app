@@ -33,6 +33,7 @@ export default function TemaAdminScreen() {
     canConnect,
     lightOffTime,
     showProgress, // ✅ 추가
+    isHorizontal,
     setTitle,
     setMinutes,
     setSeconds,
@@ -43,6 +44,7 @@ export default function TemaAdminScreen() {
     setCanConnect,
     setLightOffTime,
     setShowProgress, // ✅ 추가
+    setIsHorizontal,
   } = useThemeStore();
 
   const [tempTitle, setTempTitle] = useState(title);
@@ -56,6 +58,7 @@ export default function TemaAdminScreen() {
     lightOffTime.toString()
   );
   const [tempShowProgress, setTempShowProgress] = useState(showProgress); // ✅ 추가
+  const [tempHorizontal, setTempHorizontal] = useState(isHorizontal);
 
   const [fadeAnim] = useState(new Animated.Value(0));
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -70,6 +73,7 @@ export default function TemaAdminScreen() {
     setTempCanConnect(canConnect);
     setTempLightOffTime(lightOffTime.toString());
     setTempShowProgress(showProgress); // ✅ 동기화
+    setTempHorizontal(isHorizontal);
   }, [
     title,
     minutes,
@@ -80,6 +84,7 @@ export default function TemaAdminScreen() {
     canConnect,
     lightOffTime,
     showProgress, // ✅
+    isHorizontal,
   ]);
 
   const showSavedPopup = () => {
@@ -108,6 +113,7 @@ export default function TemaAdminScreen() {
     setCanConnect(tempCanConnect);
     setLightOffTime(Number(tempLightOffTime));
     setShowProgress(!!tempShowProgress); // ✅ 저장
+    setIsHorizontal(tempHorizontal);
     await saveTheme();
     showSavedPopup();
   };
@@ -122,7 +128,8 @@ export default function TemaAdminScreen() {
       tempImage !== themeImage ||
       tempCanConnect !== canConnect ||
       tempLightOffTime !== lightOffTime.toString() ||
-      tempShowProgress !== showProgress; // ✅ 변경감지
+      tempShowProgress !== showProgress ||
+      tempHorizontal !== isHorizontal; // ✅ 변경감지
 
     if (isModified) {
       setShowConfirmModal(true);
@@ -357,6 +364,10 @@ export default function TemaAdminScreen() {
               value={tempShowProgress}
               onValueChange={setTempShowProgress}
             />
+          </View>
+          <View style={styles.switchRow}>
+            <Text style={styles.label}>가로 모드 (태블릿)</Text>
+            <Switch value={tempHorizontal} onValueChange={setTempHorizontal} />
           </View>
         </ScrollView>
 

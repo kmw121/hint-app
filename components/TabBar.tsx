@@ -54,7 +54,10 @@ export default function TabBar({
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const newChatAnim = useRef(new Animated.Value(0)).current;
   const tabCount = flashlightEnabled ? 6 : 5;
-  const buttonSize = Math.min(TAB_BUTTON_MAX, Math.floor((width - 24 - (tabCount - 1) * 4) / tabCount));
+  const buttonSize = Math.min(
+    TAB_BUTTON_MAX,
+    Math.floor((width - 24 - (tabCount - 1) * 4) / tabCount)
+  );
   const iconSize = Math.floor(buttonSize * 0.68);
 
   useEffect(() => {

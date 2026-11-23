@@ -14,7 +14,6 @@ import type { Socket } from "socket.io-client";
 type ChatMsg = { type: "client" | "server" | "app"; data: string; createdAt: string };
 
 export default function useSocketConnection() {
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const urlRef = useRef<string | null>(null);
 
@@ -32,7 +31,9 @@ export default function useSocketConnection() {
     getSyncSnapshot,
     applyServerSnapshot,
     stateLoaded,
-    setForcedLightOff,
+    setBlackoutState,
+    blackoutExpiresAt,
+    forcedLightOff,
     setIsNewChat,
     getIsChatTap,
   } = useHintStore();
@@ -82,6 +83,19 @@ export default function useSocketConnection() {
       s.off("connect_error");
       s.off("command");
       s.off("stateSnapshot");
+      s.off("blackoutState");
+
+      s.on("blackoutState", (state: {
+        active: boolean; expiresAt: number | null; revision: number;
+      }) => {
+        if (!state || typeof state.active !== "boolean" ||
+            !Number.isSafeInteger(state.revision)) return;
+        setBlackoutState(state);
+        s.emit("blackoutAck", {
+          revision: state.revision,
+          active: state.active && Number(state.expiresAt) > Date.now(),
+        });
+      });
 
       s.on("connect", () => {
         console.log("✅ 소켓 연결 성공:", s.id);
@@ -148,13 +162,18 @@ export default function useSocketConnection() {
           return;
         }
         if (command === "lightOff") {
-          setForcedLightOff(true);
-          const duration = data?.duration ?? 5;
-
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          timeoutRef.current = setTimeout(() => setForcedLightOff(false), duration * 1000);
+          const duration = Number(data?.duration ?? data?.lightOffTime ?? 5);
+          if (!Number.isFinite(duration) || duration <= 0) return;
+          setBlackoutState({ active: true, expiresAt: Date.now() + duration * 1000,
+            revision: useHintStore.getState().blackoutRevision + 1 });
 
           s.emit("toControl", { themeCode, status: "completeSync", data: "암전" });
+          return;
+        }
+
+        if (command === "lightOn") {
+          setBlackoutState({ active: false, expiresAt: null,
+            revision: useHintStore.getState().blackoutRevision + 1 });
           return;
         }
 
@@ -206,13 +225,35 @@ export default function useSocketConnection() {
       setChatData,
       setProgress,
       resetHintState,
-      setForcedLightOff,
+      setBlackoutState,
       setIsNewChat,
       getIsChatTap,
       getChatData,
       applyServerSnapshot,
     ]
   );
+
+  useEffect(() => {
+    if (!stateLoaded || !forcedLightOff || !blackoutExpiresAt) return;
+    const releaseIfExpired = () => {
+      if (Date.now() < blackoutExpiresAt) return;
+      setBlackoutState({ active: false, expiresAt: null,
+        revision: useHintStore.getState().blackoutRevision });
+    };
+    const remaining = blackoutExpiresAt - Date.now();
+    if (remaining <= 0) {
+      releaseIfExpired();
+      return;
+    }
+    const timer = setTimeout(releaseIfExpired, remaining);
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") releaseIfExpired();
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
+  }, [stateLoaded, forcedLightOff, blackoutExpiresAt, setBlackoutState]);
 
   // ✅ 서버 재탐색 트리거 (연결 실패 시 호출)
   const triggerRediscovery = useCallback(async () => {
