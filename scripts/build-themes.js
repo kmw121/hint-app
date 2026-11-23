@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 const { spawnSync } = require("child_process");
 
 const projectRoot = path.resolve(__dirname, "..");
@@ -77,6 +78,33 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
+function configureAndroidSdk() {
+  const localPropertiesPath = path.join(androidRoot, "local.properties");
+  const candidates = [
+    process.env.ANDROID_HOME,
+    process.env.ANDROID_SDK_ROOT,
+    path.join(os.homedir(), "AppData", "Local", "Android", "Sdk"),
+  ].filter(Boolean);
+  const sdkPath = candidates.find((candidate) =>
+    fs.existsSync(path.join(candidate, "platform-tools")) &&
+    fs.existsSync(path.join(candidate, "platforms"))
+  );
+
+  if (!sdkPath) {
+    throw new Error(
+      "Android SDK를 찾을 수 없습니다. ANDROID_HOME 또는 ANDROID_SDK_ROOT를 설정하거나 Android Studio에서 SDK를 설치하세요."
+    );
+  }
+
+  // Gradle reads local.properties during project configuration. The file is
+  // machine-specific and ignored by Git, so create/update it for this build.
+  const normalizedSdkPath = path.resolve(sdkPath).replace(/\\/g, "/");
+  fs.writeFileSync(localPropertiesPath, `sdk.dir=${normalizedSdkPath}\n`, "utf8");
+  process.env.ANDROID_HOME = sdkPath;
+  process.env.ANDROID_SDK_ROOT = sdkPath;
+  console.log(`Android SDK: ${sdkPath}`);
+}
+
 function syncControlData(themeCodes) {
   const themes = readJsonArray(controlThemesPath);
   const progress = readJsonArray(controlProgressPath);
@@ -125,6 +153,8 @@ function main() {
       "android 폴더가 없습니다. 먼저 npx expo prebuild --platform android를 실행하세요."
     );
   }
+
+  configureAndroidSdk();
 
   fs.mkdirSync(outputRoot, { recursive: true });
 

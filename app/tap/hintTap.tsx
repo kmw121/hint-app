@@ -21,6 +21,7 @@ export default function HintTapScreen() {
   const [inputValue, setInputValue] = useState("");
   const [fadeAnim] = useState(new Animated.Value(0));
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [contentHeight, setContentHeight] = useState(0);
   const router = useRouter();
 
   const {
@@ -94,12 +95,18 @@ export default function HintTapScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={isKeyboardVisible ? 100 : -3}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? (isKeyboardVisible ? 100 : -3) : 0}
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, minHeight: contentHeight }}
           keyboardShouldPersistTaps="handled"
+          onLayout={(event) => {
+            const measuredHeight = event?.nativeEvent?.layout?.height;
+            if (typeof measuredHeight === "number") {
+              setContentHeight((height) => Math.max(height, measuredHeight));
+            }
+          }}
         >
           <View style={styles.middleContent}>
             <Text
@@ -116,6 +123,7 @@ export default function HintTapScreen() {
             </Text>
             <View style={[styles.inputRow]}>
               <TextInput
+                disableFullscreenUI
                 style={[
                   styles.input,
                   {

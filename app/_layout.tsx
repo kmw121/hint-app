@@ -6,15 +6,15 @@ import { useThemeStore } from "@/stores/themeStore";
 import { getSocket } from "@/utils/socketClient";
 import "@react-native-firebase/app";
 import { useFonts } from "expo-font";
-import { Slot } from "expo-router";
+import { Slot, usePathname } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
+  Dimensions,
   ImageBackground,
-  Keyboard,
   StyleSheet,
   Text,
   View,
@@ -67,18 +67,12 @@ function ForcedLightOffOverlay() {
 function LayoutInner() {
   const { loadTheme, themeCode } = useThemeStore();
   const insets = useSafeAreaInsets();
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [themeSettingsLoaded, setThemeSettingsLoaded] = useState(false);
   const { loadHints, hintCount, usedHintCodes, loadAppState, stateLoaded } = useHintStore();
   const usedHintCodesKey = usedHintCodes.join(",");
   const lastUsedHintCode = usedHintCodes[usedHintCodes.length - 1];
 
   useSocketConnection();
-
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
 
   // ✅ 훅 내부에서 초기 1회 적용, kick은 복귀/회전 시점에 사용
   const kickImmersive = useImmersiveMode();
@@ -86,6 +80,7 @@ function LayoutInner() {
   useEffect(() => {
     const prepare = async () => {
       await loadTheme();
+      setThemeSettingsLoaded(true);
       await loadHints();
       await loadAppState();
     };
@@ -94,12 +89,13 @@ function LayoutInner() {
 
   // 방향 잠금 후 immersive 재적용
   useEffect(() => {
+    if (!themeSettingsLoaded) return;
     (async () => {
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
       // 방향 잠금 직후 한 번
       kickImmersive();
     })();
-  }, [kickImmersive]);
+  }, [themeSettingsLoaded, kickImmersive]);
 
   // ⭐ AppState 리스너 개선: 다중 재시도 로직 추가
   useEffect(() => {
@@ -158,10 +154,29 @@ function LayoutInner() {
     }
   }, [hintCount, usedHintCodesKey, lastUsedHintCode, themeCode, stateLoaded]);
 
+  if (!stateLoaded) return <View style={{ flex: 1, backgroundColor: "black" }} />;
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" hidden />
-      <View style={[styles.contentMain, { marginTop: Math.max(insets.top, 12), marginBottom: keyboardVisible ? 8 : 80 + insets.bottom }]}>
+      <View
+        style={[
+          styles.contentMain,
+          {
+            marginTop: Math.max(insets.top, 12),
+            marginLeft: 12,
+            marginRight: Math.max(insets.right, 12),
+            marginBottom: 80 + insets.bottom,
+            height: Math.max(
+              0,
+              Dimensions.get("screen").height -
+                Math.max(insets.top, 12) -
+                80 -
+                insets.bottom
+            ),
+          },
+        ]}
+      >
         <ImageBackground
           source={backgroundImage}
           style={styles.contentBackground}
@@ -174,7 +189,6 @@ function LayoutInner() {
         </ImageBackground>
       </View>
       <FlashTorch />
-      <ForcedLightOffOverlay />
     </View>
   );
 }
@@ -182,7 +196,7 @@ function LayoutInner() {
 export default function Layout() {
   const [notifReady, setNotifReady] = useState(false);
   const { flashlightEnabled } = useThemeStore();
-  const { newChat, setIsChatTap } = useHintStore();
+  const { newChat, setIsChatTap, stateLoaded } = useHintStore();
 
   const [fontsLoaded] = useFonts({
     [FONT.regular]: PretendardRegular,
@@ -219,11 +233,11 @@ export default function Layout() {
           <View
             style={[
               styles.container,
-              { alignItems: "center", justifyContent: "center" },
+              { alignItems: "center", justifyContent: "center", backgroundColor: "black" },
             ]}
           >
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={{ color: "#fff", marginTop: 12 }}>준비 중…</Text>
+            <ActivityIndicator size="large" color="black" />
+            <Text style={{ color: "black", marginTop: 12 }}>준비 중…</Text>
           </View>
         </GestureHandlerRootView>
       </SafeAreaProvider>
@@ -234,11 +248,12 @@ export default function Layout() {
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <LayoutInner />
-        <TabBar
+        {stateLoaded && <TabBar
           newChat={newChat}
           flashlightEnabled={flashlightEnabled}
           setIsChatTap={setIsChatTap}
-        />
+        />}
+        <ForcedLightOffOverlay />
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );
@@ -259,7 +274,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentMain: {
-    flex: 1,
+    flex: 0,
     marginHorizontal: 12,
     borderCurve: "circular",
     borderRadius: 18,

@@ -74,6 +74,9 @@ export default function AdminHintScreen() {
         a.code !== b.code ||
         a.text !== b.text ||
         a.imageUri !== b.imageUri ||
+        a.imageAspectRatio !== b.imageAspectRatio ||
+        a.imageWidth !== b.imageWidth ||
+        a.imageHeight !== b.imageHeight ||
         a.answer !== b.answer
       )
         return false;
@@ -97,7 +100,9 @@ export default function AdminHintScreen() {
         currentHint.id
       );
 
-      editHint(index, { imageUri: newImageUri });
+      const aspect = selected.width && selected.height ? selected.width / selected.height : 1;
+      const imageWidth = 300;
+      editHint(index, { imageUri: newImageUri, imageAspectRatio: aspect, imageWidth, imageHeight: Math.round(imageWidth / aspect) });
     }
   };
 
@@ -154,6 +159,24 @@ export default function AdminHintScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {item.imageUri && (() => {
+          const aspect = item.imageAspectRatio || (item.imageWidth && item.imageHeight ? item.imageWidth / item.imageHeight : 1);
+          const updateWidth = (value: string) => {
+            const parsed = Number(value);
+            editHint(index, { imageWidth: value ? parsed : undefined, imageHeight: value && Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed / aspect) : undefined });
+          };
+          const updateHeight = (value: string) => {
+            const parsed = Number(value);
+            editHint(index, { imageHeight: value ? parsed : undefined, imageWidth: value && Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * aspect) : undefined });
+          };
+          return <View style={styles.sizeRow}>
+            <TextInput keyboardType="numeric" placeholder="300" value={item.imageWidth ? String(item.imageWidth) : ""} onChangeText={updateWidth} style={styles.sizeInput} />
+            <Text style={styles.sizeSeparator}>×</Text>
+            <TextInput keyboardType="numeric" placeholder="300" value={item.imageHeight ? String(item.imageHeight) : ""} onChangeText={updateHeight} style={styles.sizeInput} />
+            <Text style={styles.sizeUnit}>px</Text>
+          </View>;
+        })()}
 
         {item.imageUri && (
           <TouchableOpacity
@@ -425,6 +448,10 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignSelf: "center",
   },
+  sizeRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, gap: 8 },
+  sizeInput: { width: 76, borderWidth: 1, borderColor: "#ccc", borderRadius: 5, padding: 8, textAlign: "center" },
+  sizeSeparator: { fontSize: 18 },
+  sizeUnit: { fontSize: 14 },
   imagePlaceholder: {
     width: 100,
     height: 100,

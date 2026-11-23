@@ -54,7 +54,10 @@ export default function TabBar({
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const newChatAnim = useRef(new Animated.Value(0)).current;
   const tabCount = flashlightEnabled ? 6 : 5;
-  const buttonSize = Math.min(TAB_BUTTON_MAX, Math.floor((width - 24 - (tabCount - 1) * 4) / tabCount));
+  const buttonSize = Math.min(
+    TAB_BUTTON_MAX,
+    Math.floor((width - 24 - (tabCount - 1) * 4) / tabCount)
+  );
   const iconSize = Math.floor(buttonSize * 0.68);
 
   useEffect(() => {
@@ -149,7 +152,17 @@ export default function TabBar({
   if (keyboardVisible) return null;
 
   return (
-    <View style={[styles.tabBar, { height: 68 + insets.bottom, paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View
+      style={[
+        styles.tabBar,
+        styles.portraitTabBar,
+        {
+          height: 68 + insets.bottom,
+          paddingBottom: Math.max(insets.bottom, 8),
+          bottom: 0,
+        },
+      ]}
+    >
       {renderTab("Main", indexIcon, indexActive, TabRoutes.Main)}
       {renderTab("Hint", hintTap, hintTapActive, TabRoutes.Hint)}
       {renderTab("Chat", chatTap, chatTapActive, TabRoutes.Chat)}
@@ -162,15 +175,24 @@ export default function TabBar({
 }
 const styles = StyleSheet.create({
   tabBar: {
-    width: "100%",
-    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#2B2B2B",
+    position: "absolute",
+  },
+  landscapeTabBar: {
+    top: 0,
+    bottom: 0,
+    left: 0,
+    flexDirection: "column",
+    justifyContent: "space-between",
+  },
+  portraitTabBar: {
+    width: "100%",
+    bottom: 0,
+    flexDirection: "row",
     justifyContent: "space-evenly",
     paddingHorizontal: 12,
     paddingTop: 6,
-    backgroundColor: "#2B2B2B",
-    position: "absolute",
-    bottom: 0,
   },
   tabTouchable: {
     borderRadius: 10,

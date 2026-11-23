@@ -142,7 +142,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       canConnect: parsed?.canConnect ?? defaultPersist.canConnect,
       themeCode: defaultPersist.themeCode,
       buildThemeName: defaultPersist.buildThemeName,
-      isHorizontal: false,
+      isHorizontal: parsed?.isHorizontal ?? defaultPersist.isHorizontal,
       showProgress: parsed?.showProgress ?? defaultPersist.showProgress, // ✅
     };
 

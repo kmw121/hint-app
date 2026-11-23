@@ -2,9 +2,8 @@ import type { ChatMessage } from "@/stores/hintStore";
 import { useHintStore } from "@/stores/hintStore";
 import { useEffect, useRef, useState } from "react";
 import {
+  Dimensions,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,26 +12,35 @@ import {
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ChatTapScreen() {
   const [message, setMessage] = useState("");
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardTop, setKeyboardTop] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
 
   const { chatData, setChatData } = useHintStore();
 
   useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () =>
-      setKeyboardVisible(true)
-    );
-    const hideSub = Keyboard.addListener("keyboardDidHide", () =>
-      setKeyboardVisible(false)
-    );
+    const showSub = Keyboard.addListener("keyboardDidShow", (event) => {
+      setKeyboardVisible(true);
+      setKeyboardTop(event.endCoordinates?.screenY ?? 0);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardVisible(false);
+      setKeyboardTop(0);
+    });
     return () => {
       showSub.remove();
       hideSub.remove();
     };
   }, []);
+  const keyboardOverlap = isKeyboardVisible && keyboardTop > 0
+    ? Math.max(0, Dimensions.get("screen").height - keyboardTop)
+    : 0;
+  const keyboardLift = Math.max(0, keyboardOverlap - 80 - insets.bottom + 12);
 
   const formatKoreanTime = (utcString: string) => {
     const date = new Date(utcString); // 이미 UTC → 로컬(KST) 자동 변환됨
@@ -61,14 +69,9 @@ export default function ChatTapScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={isKeyboardVisible ? 100 : -3}
-      >
-        <View style={styles.container}>
+      <View style={styles.container}>
           <ScrollView
-            contentContainerStyle={styles.chatBox}
+            contentContainerStyle={[styles.chatBox, styles.portraitChatBox]}
             ref={scrollViewRef}
             onContentSizeChange={() =>
               scrollViewRef.current?.scrollToEnd({ animated: true })
@@ -138,8 +141,15 @@ export default function ChatTapScreen() {
             )}
           </ScrollView>
 
-          <View style={[styles.inputRow, isKeyboardVisible && { marginBottom: 12 }]}>
+          <View
+            style={[
+              styles.inputRow,
+              styles.portraitInputRow,
+              { bottom: keyboardLift },
+            ]}
+          >
             <TextInput
+              disableFullscreenUI
               style={[
                 styles.input,
                 {
@@ -166,8 +176,7 @@ export default function ChatTapScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+      </View>
     </GestureHandlerRootView>
   );
 }
@@ -178,6 +187,16 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 12,
     justifyContent: "flex-end",
+  },
+  portraitChatBox: {
+    paddingBottom: 76,
+  },
+  portraitInputRow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    elevation: 10,
   },
   chatPlaceholder: {
     color: "#888",
